@@ -45,7 +45,6 @@ append(NGT::Args &args)
       return;
     }
     string line;
-    cerr << "append data in memory." << endl;
     size_t count = 0;
     while(getline(is, line)) {
       if (dataSize > 0 && count >= dataSize) {
@@ -59,6 +58,7 @@ append(NGT::Args &args)
 	linestream >> value;
 	object.push_back(value);
       }
+      NGT::ObjectID id = index.append(index.makeSparseObject(object));
     }
     index.createIndex(threadSize);
     index.saveIndex(database);
