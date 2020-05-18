@@ -159,6 +159,9 @@ using namespace std;
     case 'j':
       property.distanceType = NGT::Index::Property::DistanceType::DistanceTypeJaccard;
       break;
+    case 'J':
+      property.distanceType = NGT::Index::Property::DistanceType::DistanceTypeSparseJaccard;
+      break;
     case 'c':
       property.distanceType = NGT::Index::Property::DistanceType::DistanceTypeCosine;
       break;

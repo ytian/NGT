@@ -300,6 +300,26 @@ NGT::Index::exportIndex(const string &database, const string &file) {
   cerr << "# of objects=" << idx.getObjectRepositorySize() - 1 << endl;
 }
 
+std::vector<float>
+NGT::Index::makeSparseObject(std::vector<uint32_t> &object)
+{
+  if (static_cast<NGT::GraphIndex&>(getIndex()).getProperty().distanceType != NGT::ObjectSpace::DistanceType::DistanceTypeSparseJaccard) {
+    NGTThrowException("NGT::Index::makeSparseObject: Not sparse jaccard.");
+  }
+  size_t dimension = getObjectSpace().getDimension();
+  if (object.size() > dimension) {
+    std::stringstream msg;
+    msg << "NGT::Index::makeSparseObject: The dimensionality is too large. " << object.size() << ":" << dimension;
+    NGTThrowException(msg);
+  }
+  std::vector<float> obj(dimension, 0.0);
+  for (size_t i = 0; i < object.size(); i++) {
+    float fv = *reinterpret_cast<float*>(&object[i]);
+    obj[i] = fv;
+  }
+  return obj;
+}
+
 void 
 NGT::Index::Property::set(NGT::Property &prop) {
   if (prop.dimension != -1) dimension = prop.dimension;
