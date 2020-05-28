@@ -37,16 +37,25 @@ append(NGT::Args &args)
   int threadSize = args.getl("p", 50);
   size_t dataSize = args.getl("n", 0);
 
+  std::istream *is;
+  std::ifstream *ifs = 0;
+
   try {
     NGT::Index	index(database);
-    ifstream	is(data);
-    if (!is) {
-      cerr << "Cannot open the specified data file. " << data << endl;
-      return;
+    if (data == "-") {
+      is = &std::cin;
+    } else {
+      ifs = new std::ifstream;
+      ifs->std::ifstream::open(data);
+      if (!(*ifs)) {
+	cerr << "Cannot open the specified data file. " << data << endl;
+	return;
+      }
+      is = ifs;
     }
     string line;
     size_t count = 0;
-    while(getline(is, line)) {
+    while(getline(*is, line)) {
       if (dataSize > 0 && count >= dataSize) {
 	break;
       }
@@ -56,13 +65,27 @@ append(NGT::Args &args)
       while (!linestream.eof()) {
 	uint32_t value;
 	linestream >> value;
+	if (linestream.fail()) {
+	  object.clear();
+	  break;
+	}
 	object.push_back(value);
       }
+      if (object.empty()) {
+	std::cerr << "jaccard-sparse: Empty line or invalid value. " << count << ":" << line << std::endl;
+	continue;
+      }
       NGT::ObjectID id = index.append(index.makeSparseObject(object));
+    }
+    if (data != "-") {
+      delete ifs;
     }
     index.createIndex(threadSize);
     index.saveIndex(database);
   } catch (NGT::Exception &err) {
+    if (data != "-") {
+      delete ifs;
+    }
     cerr << "jaccard-sparse: Error " << err.what() << endl;
     cerr << usage << endl;
   }
@@ -80,9 +103,14 @@ search(NGT::Index &index, NGT::Command::SearchParameter &searchParameter, ostrea
     return;
   }
 
+  if (searchParameter.outputMode[0] == 'e') { 
+    stream << "# Beginning of Evaluation" << endl; 
+  }
+
   string line;
   double totalTime	= 0;
   size_t queryCount	= 0;
+  double epsilon	= searchParameter.beginOfEpsilon;
 
   while(getline(is, line)) {
     if (searchParameter.querySize > 0 && queryCount >= searchParameter.querySize) {
@@ -105,7 +133,7 @@ search(NGT::Index &index, NGT::Command::SearchParameter &searchParameter, ostrea
     if (searchParameter.accuracy > 0.0) {
       sc.setExpectedAccuracy(searchParameter.accuracy);
     } else {
-      sc.setEpsilon(searchParameter.beginOfEpsilon);
+      sc.setEpsilon(epsilon);
     }
     sc.setEdgeSize(searchParameter.edgeSize);
     NGT::Timer timer;
@@ -115,17 +143,42 @@ search(NGT::Index &index, NGT::Command::SearchParameter &searchParameter, ostrea
     case 's': timer.start(); index.linearSearch(sc); timer.stop(); break;
     }
     totalTime += timer.time;
-    stream << "Query No." << queryCount << endl;
-    stream << "Rank\tID\tDistance" << endl;
+    if (searchParameter.outputMode[0] == 'e') {
+      stream << "# Query No.=" << queryCount << endl;
+      stream << "# Query=" << line.substr(0, 20) + " ..." << endl;
+      stream << "# Index Type=" << searchParameter.indexType << endl;
+      stream << "# Size=" << searchParameter.size << endl;
+      stream << "# Radius=" << searchParameter.radius << endl;
+      stream << "# Epsilon=" << epsilon << endl;
+      stream << "# Query Time (msec)=" << timer.time * 1000.0 << endl;
+      stream << "# Distance Computation=" << sc.distanceComputationCount << endl;
+      stream << "# Visit Count=" << sc.visitCount << endl;
+    } else {
+      stream << "Query No." << queryCount << endl;
+      stream << "Rank\tID\tDistance" << endl;
+    }
     for (size_t i = 0; i < objects.size(); i++) {
       stream << i + 1 << "\t" << objects[i].id << "\t";
       stream << objects[i].distance << endl;
     }
-    stream << "# End of Search" << endl;
+    if (searchParameter.outputMode[0] == 'e') {
+      stream << "# End of Search" << endl;
+    } else {
+      stream << "Query Time= " << timer.time << " (sec), " << timer.time * 1000.0 << " (msec)" << endl;
+    }
+    if (searchParameter.outputMode[0] == 'e') {
+      stream << "# End of Query" << endl;
+    }
   }
-  stream << "Average Query Time= " << totalTime / (double)queryCount  << " (sec), " 
-	 << totalTime * 1000.0 / (double)queryCount << " (msec), (" 
-	 << totalTime << "/" << queryCount << ")" << endl;
+  if (searchParameter.outputMode[0] == 'e') {
+    stream << "# Average Query Time (msec)=" << totalTime * 1000.0 / (double)queryCount << endl;
+    stream << "# Number of queries=" << queryCount << endl;
+    stream << "# End of Evaluation" << endl;
+  } else {
+    stream << "Average Query Time= " << totalTime / (double)queryCount  << " (sec), " 
+	   << totalTime * 1000.0 / (double)queryCount << " (msec), (" 
+	   << totalTime << "/" << queryCount << ")" << endl;
+  }
 }
 
 void
