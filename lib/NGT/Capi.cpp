@@ -343,7 +343,7 @@ static bool ngt_search_index_(NGT::Index* pindex, NGT::Object *ngtquery, size_t 
   return true;
 }
 
-bool ngt_search_index(NGTIndex index, double *query, int32_t query_dim, size_t size, float epsilon, float radius, NGTObjectDistances results, NGTError error) {
+bool ngt_search_index(NGTIndex index, double *query, int32_t query_dim, size_t size, float epsilon, float radius, NGTObjectDistances results, NGTError error, int edge_size = INT_MIN) {
   if(index == NULL || query == NULL || results == NULL || query_dim <= 0){
     std::stringstream ss;
     ss << "Capi : " << __FUNCTION__ << "() : parametor error: index = " << index << " query = " << query << " results = " << results << " query_dim = " << query_dim;
@@ -361,7 +361,7 @@ bool ngt_search_index(NGTIndex index, double *query, int32_t query_dim, size_t s
   try{	  
     std::vector<double> vquery(&query[0], &query[query_dim]);
     ngtquery = pindex->allocateObject(vquery);
-    ngt_search_index_(pindex, ngtquery, size, epsilon, radius, results);
+    ngt_search_index_(pindex, ngtquery, size, epsilon, radius, results, edge_size);
   }catch(std::exception &err) {
     std::stringstream ss;
     ss << "Capi : " << __FUNCTION__ << "() : Error: " << err.what();
